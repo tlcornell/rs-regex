@@ -45,11 +45,12 @@ fn parse(text: &str) -> Node
  */
 fn parse_regex(text: &str) -> Option<(Node, &str)>
 {
+    //println!("parse_regex '{}'", text);
     parse_alt(text)
 }
 
 fn parse_alt(text: &str) -> Option<(Node, &str)> {
-    //Some((Node::new_epsilon(), start, start))
+    //println!("parse_alt '{}'", text);
     match parse_conc(text) {
         None => None,
         Some((t1, rmdr1)) => {
@@ -67,7 +68,7 @@ fn parse_alt(text: &str) -> Option<(Node, &str)> {
 }
 
 fn parse_conc(text: &str) -> Option<(Node, &str)> {
-    //Some((Node::new_epsilon(), text))
+    //println!("parse_conc '{}'", text);
     match parse_iter(text) {
         None => None,
         Some((t1, rmdr1)) => {
@@ -90,6 +91,7 @@ fn parse_conc(text: &str) -> Option<(Node, &str)> {
  * But this is left-recursive.
  */
 fn parse_iter(text: &str) -> Option<(Node, &str)> {
+    //println!("parse_iter '{}'", text);
     match parse_atom(text) {
         None => None,
         Some((mut t1, mut rmdr1)) => {
@@ -103,6 +105,7 @@ fn parse_iter(text: &str) -> Option<(Node, &str)> {
 }
 
 fn parse_atom(text: &str) -> Option<(Node, &str)> {
+    //println!("parse_atom '{}'", text);
     if text.starts_with("(") {
         match parse_regex(&text[1..]) {
             None => None,
@@ -121,7 +124,7 @@ fn parse_atom(text: &str) -> Option<(Node, &str)> {
 
 fn is_operator(ch: char) -> bool {
     match ch {
-        '|' | '*' | '(' | ')' => true,
+        '|' | '*' | ')'  => true,
         _ => false
     }
 }
