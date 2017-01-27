@@ -40,8 +40,8 @@ fn parse(text: &str) -> Node
  * <regex> ::= <alt>
  * <alt> ::= <conc> OR <conc> '|' <alt>
  * <conc> ::= <iter> OR <iter> <conc>
- * <iter> ::= <base> OR <base> '*'
- * <base> ::= <char> OR '\' <char> OR '(' <regex> ')'
+ * <iter> ::= <base> OR <iter> '*' OR <iter> '+' OR <iter> '?'
+ * <base> ::= <char> OR '(' <regex> ')' OR '\' <char> OR '.'
  */
 fn parse_regex(text: &str) -> Option<(Node, &str)>
 {
@@ -95,8 +95,16 @@ fn parse_iter(text: &str) -> Option<(Node, &str)> {
     match parse_atom(text) {
         None => None,
         Some((mut t1, mut rmdr1)) => {
-            while rmdr1.starts_with("*") {
-                t1 = Node::new_iteration(t1);
+            loop {
+                match rmdr1.chars().next() {
+                    None => break,
+                    Some(c1) => match c1 {
+                        '*' => t1 = Node::new_iteration(t1),
+                        '+' => t1 = Node::new_positive_iteration(t1),
+                        '?' => t1 = Node::new_optional(t1),
+                        _ => break
+                    }
+                }
                 rmdr1 = &rmdr1[1..];
             }
             Some((t1, rmdr1))
@@ -122,9 +130,12 @@ fn parse_atom(text: &str) -> Option<(Node, &str)> {
     }
 }
 
+/**
+ * Used to tell when something is a boundary for concatenation.
+ */
 fn is_operator(ch: char) -> bool {
     match ch {
-        '|' | '*' | ')'  => true,
+        '|' | '*' | '+' | '?' | ')'  => true,
         _ => false
     }
 }
@@ -207,7 +218,7 @@ impl Node {
             TermType::Atom(c) => { println!("ATOM '{}'", c); },
             TermType::Concatenation => { println!("CONCATENATION"); },
             TermType::Alternation => { println!("ALTERNATION"); },
-            TermType::Iteration => { println!("ITERATION"); },
+            TermType::Iteration => { println!("FREE_ITERATION"); },
             TermType::PositiveIteration => { println!("POSITIVE_ITERATION"); },
             TermType::Optional => { println!("OPTIONAL"); },
         }
