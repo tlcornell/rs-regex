@@ -23,7 +23,7 @@ fn main() {
 }
 
 
-fn parse(text: &str) -> Node
+fn parse(text: &str) -> Term
 {
     match parse_regex(text) {
         Some((t, s)) => {
@@ -43,13 +43,13 @@ fn parse(text: &str) -> Node
  * <iter> ::= <base> OR <iter> '*' OR <iter> '+' OR <iter> '?'
  * <base> ::= <char> OR '(' <regex> ')' OR '\' <char> OR '.'
  */
-fn parse_regex(text: &str) -> Option<(Node, &str)>
+fn parse_regex(text: &str) -> Option<(Term, &str)>
 {
     //println!("parse_regex '{}'", text);
     parse_alt(text)
 }
 
-fn parse_alt(text: &str) -> Option<(Node, &str)> {
+fn parse_alt(text: &str) -> Option<(Term, &str)> {
     //println!("parse_alt '{}'", text);
     match parse_conc(text) {
         None => None,
@@ -60,14 +60,14 @@ fn parse_alt(text: &str) -> Option<(Node, &str)> {
                 match parse_alt(&rmdr1[1..]) {
                     None => None,
                     Some((t2, rmdr2)) => 
-                        Some((Node::new_alternation(t1, t2), rmdr2))
+                        Some((Term::new(TermType::Alternation, vec!(t1, t2)), rmdr2))
                 }
             }
         }
     }
 }
 
-fn parse_conc(text: &str) -> Option<(Node, &str)> {
+fn parse_conc(text: &str) -> Option<(Term, &str)> {
     //println!("parse_conc '{}'", text);
     match parse_iter(text) {
         None => None,
@@ -78,7 +78,7 @@ fn parse_conc(text: &str) -> Option<(Node, &str)> {
                 match parse_conc(rmdr1) {
                     None => None,
                     Some((t2, rmdr2)) =>
-                        Some((Node::new_concatenation(t1, t2), rmdr2))
+                        Some((Term::new(TermType::Concatenation, vec!(t1, t2)), rmdr2))
                 }
             }
         }
@@ -90,7 +90,7 @@ fn parse_conc(text: &str) -> Option<(Node, &str)> {
  *    <iter> -> <iter> '*'
  * But this is left-recursive.
  */
-fn parse_iter(text: &str) -> Option<(Node, &str)> {
+fn parse_iter(text: &str) -> Option<(Term, &str)> {
     //println!("parse_iter '{}'", text);
     match parse_atom(text) {
         None => None,
@@ -99,9 +99,9 @@ fn parse_iter(text: &str) -> Option<(Node, &str)> {
                 match rmdr1.chars().next() {
                     None => break,
                     Some(c1) => match c1 {
-                        '*' => t1 = Node::new_iteration(t1),
-                        '+' => t1 = Node::new_positive_iteration(t1),
-                        '?' => t1 = Node::new_optional(t1),
+                        '*' => t1 = Term::new(TermType::Iteration, vec!(t1)),
+                        '+' => t1 = Term::new(TermType::PositiveIteration, vec!(t1)),
+                        '?' => t1 = Term::new(TermType::Optional, vec!(t1)),
                         _ => break
                     }
                 }
@@ -112,7 +112,7 @@ fn parse_iter(text: &str) -> Option<(Node, &str)> {
     }
 }
 
-fn parse_atom(text: &str) -> Option<(Node, &str)> {
+fn parse_atom(text: &str) -> Option<(Term, &str)> {
     //println!("parse_atom '{}'", text);
     if text.starts_with("(") {
         match parse_regex(&text[1..]) {
@@ -125,13 +125,23 @@ fn parse_atom(text: &str) -> Option<(Node, &str)> {
                 }
             }
         }
+    } else if text.starts_with("\\") {
+        let optc = text.chars().nth(1);
+        match optc {
+            None => panic!("String ends in a backslash"),
+            Some('e') => Some((Term::new(TermType::Epsilon, vec!()), &text[2..])),
+            Some(c) => Some((Term::new(TermType::Atom(c), vec!()), &text[2..]))
+        }
     } else {
-        Some((Node::new_atom(text.chars().next().unwrap()), &text[1..]))
+        let c = text.chars().next().unwrap();
+        Some((Term::new(TermType::Atom(c), vec!()), &text[1..]))
     }
 }
 
 /**
  * Used to tell when something is a boundary for concatenation.
+ * No string that starts with one of these can be concatenated
+ * with the preceding term.
  */
 fn is_operator(ch: char) -> bool {
     match ch {
@@ -153,85 +163,32 @@ enum TermType {
 }
 
 #[derive(Debug)]
-struct Node {
+struct Term {
     op: TermType,
-    subs: Vec<Node>,
+    subs: Vec<Term>,
 }
 
-impl Node {
+impl Term {
 
-    fn new_epsilon() -> Node {
-        Node {
-            op: TermType::Epsilon,
-            subs: vec!()
-        }
-    }
-
-    fn new_atom(contents: char) -> Node {
-        Node {
-            op: TermType::Atom(contents),
-            subs: vec!()
-        }
-    }
-
-    fn new_concatenation(left: Node, right: Node) -> Node {
-        Node {
-            op: TermType::Concatenation,
-            subs: vec!(left, right)
-        }
-    }
-
-    fn new_alternation(left: Node, right: Node) -> Node {
-        Node {
-            op: TermType::Alternation,
-            subs: vec!(left, right)
-        }
-    }
-
-    fn new_iteration(sub: Node) -> Node {
-        Node {
-            op: TermType::Iteration,
-            subs: vec!(sub)
-        }
-    }
-
-    fn new_positive_iteration(sub: Node) -> Node {
-        Node {
-            op: TermType::PositiveIteration,
-            subs: vec!(sub)
-        }
-    }
-
-    fn new_optional(sub: Node) -> Node {
-        Node {
-            op: TermType::Optional,
-            subs: vec!(sub)
+    /**
+     * Note that there's no arity checking between the op and the
+     * sub-term array. So far all our operators have strict arity 
+     * requirements, so such a check should probably be added.
+     */
+    fn new(op: TermType, subs: Vec<Term>) -> Term {
+        Term {
+            op: op,
+            subs: subs
         }
     }
 
 
 
-    fn pretty_print(&self, tab: u8) -> fmt::Result {
-        tab_over(tab);
-        match self.op {
-            TermType::Epsilon => { println!("EPSILON"); },
-            TermType::Atom(c) => { println!("ATOM '{}'", c); },
-            TermType::Concatenation => { println!("CONCATENATION"); },
-            TermType::Alternation => { println!("ALTERNATION"); },
-            TermType::Iteration => { println!("FREE_ITERATION"); },
-            TermType::PositiveIteration => { println!("POSITIVE_ITERATION"); },
-            TermType::Optional => { println!("OPTIONAL"); },
-        }
-        for t in &self.subs {
-            t.pretty_print(tab + 4);
-        }
-        Ok(())
-    }
 }
 
-impl fmt::Display for Node {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Node::pretty_print(&self, 0)
+impl fmt::Display for Term {
+    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
+        pretty_print(&self, 0)
     }
 }
 
@@ -239,4 +196,22 @@ fn tab_over(n: u8) {
     for _ in 0..n {
         print!(" ");
     }
+}
+
+
+fn pretty_print(t: &Term, tab: u8) -> fmt::Result {
+    tab_over(tab);
+    match t.op {
+        TermType::Epsilon => { println!("EPSILON"); },
+        TermType::Atom(c) => { println!("ATOM '{}'", c); },
+        TermType::Concatenation => { println!("CONCATENATION"); },
+        TermType::Alternation => { println!("ALTERNATION"); },
+        TermType::Iteration => { println!("FREE_ITERATION"); },
+        TermType::PositiveIteration => { println!("POSITIVE_ITERATION"); },
+        TermType::Optional => { println!("OPTIONAL"); },
+    }
+    for t in &t.subs {
+        pretty_print(t, tab + 4).unwrap();
+    }
+    Ok(())
 }
