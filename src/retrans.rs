@@ -13,7 +13,7 @@ pub enum Instruction {
 pub type Program = Vec<Instruction>;
 
 pub struct RegexTranslator {
-    prog: Program
+    pub prog: Program
 }
 
 impl RegexTranslator {

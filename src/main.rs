@@ -21,9 +21,11 @@ mod reterm;
 mod reparse;
 mod retrans;
 mod reinterp;
+mod sparse;
 
 use reparse::*;
 use retrans::*;
+use reinterp::*;
 
 struct AppConfig {
     in_file: Option<String>,
@@ -95,6 +97,16 @@ fn main() {
     // At this point we should be done with t...
     translator.compile(&tree);
     translator.print_prog();
+
+    let mut interpreter = ThompsonInterpreter::new();
+    interpreter.apply(&translator.prog, &text);
+    if interpreter.matches.len() == 0 {
+        println!("There were no matches");
+    } else {
+        for m in interpreter.matches {
+            println!("There was a match from position 0 to {}", m);
+        }
+    }
 }
 
 
