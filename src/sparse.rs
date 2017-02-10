@@ -72,7 +72,7 @@ impl SparseSet {
     }
 
     /**
-     * This data structure is designed to work well with uninitized data,
+     * This data structure is designed to work well with uninitialized data,
      * so there is no need to clear everything to zero here.
      */
     pub fn clear(&mut self) {

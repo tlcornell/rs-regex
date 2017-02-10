@@ -80,8 +80,8 @@ fn test(regex: &str, text: &str) {
     translator.compile(&tree);
     translator.print_prog();
 
-    let mut interpreter = ThompsonInterpreter::new();
-    interpreter.apply(&translator.prog, &text);
+    let mut interpreter = ThompsonInterpreter::new(&translator.prog);
+    interpreter.apply(&text);
     if interpreter.matches.len() == 0 {
         println!("There were no matches");
     } else {

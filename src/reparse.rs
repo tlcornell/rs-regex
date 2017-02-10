@@ -50,6 +50,7 @@ fn parse_conc(text: &str) -> Option<(Term, &str)> {
         None => None,
         Some((t1, rmdr1)) => {
             if rmdr1.is_empty() || is_operator(rmdr1.chars().next().unwrap()) {
+                // 'is_operator' really means 'is_not_a_character_literal'
                 Some((t1, rmdr1))
             } else {
                 match parse_conc(rmdr1) {

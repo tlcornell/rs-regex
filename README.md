@@ -1,4 +1,4 @@
-# rs-ast
+# rs-regex
 
 Sandbox for playing with tree structures. Just to get a handle on parsing.
 I chose regular expressions as the language to parse, because (a) I'm familiar with them; and (b) I might need to use a modified regex library for building regex-based tokenizers. 
@@ -14,7 +14,7 @@ Ultimately, the goals of a regex-based natural language tokenizer are rather dif
    transition tables on start-up. More generally, we expect heavy traffic: all 
    text in a document is expected to match some pattern. This is not search.
 * From experience, I'm pretty sure we can do without capture groups.
-   Some times you need to break up the matched string in the action code,
+   Sometimes you need to break up the matched string in the action code,
    but really it's better to do it there than pay for capture group support 
    everywhere.
 
