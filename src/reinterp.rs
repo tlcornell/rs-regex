@@ -11,7 +11,7 @@
 
 
 use std::mem::swap;
-use retrans::*;
+use reprog::*;
 use sparse::SparseSet; // cribbed from regex crate, and from its ancestors
 
 
@@ -46,9 +46,22 @@ impl TaskList {
 }
 
 
+#[derive(Debug)]
+pub struct MatchRecord {
+    pub pos: usize,
+    pub rule: usize,
+}
+
+impl MatchRecord {
+    pub fn new(p: usize, r: usize) -> MatchRecord {
+        MatchRecord { pos: p, rule: r }
+    }
+}
+
+
 
 pub struct ThompsonInterpreter<'a> {
-    pub matches: Vec<usize>, // string positions where matches ended
+    pub matches: Vec<MatchRecord>, // string positions where matches ended
     prog: &'a Program,
 }
 
@@ -68,7 +81,7 @@ impl<'a> ThompsonInterpreter<'a> {
         nlist: &mut TaskList
     ) {
 
-        use retrans::Instruction::*;
+        use reprog::Instruction::*;
 
         //println!("str_pos = {}", str_pos);
         let mut i: usize = 0;
@@ -90,9 +103,9 @@ impl<'a> ThompsonInterpreter<'a> {
                     }
                     // otherwise the thread dies here
                 }
-                Match => {
+                Match(r) => {
                     //println!("Match");
-                    self.matches.push(str_pos);
+                    self.matches.push(MatchRecord::new(str_pos, r));
                 }
                 Jump(lbl) => {
                     //println!("Task at {} added to clist", lbl);
@@ -124,10 +137,13 @@ impl<'a> ThompsonInterpreter<'a> {
         let mut clist = TaskList::new(plen);
         let mut nlist = TaskList::new(plen);
 
-        clist.add_task(0); // start of program
+        for start in &self.prog.starts {
+            println!(">> Adding entry point {} to clist", *start);
+            clist.add_task(*start);
+        }
         for (str_pos, ch) in text.char_indices() {
             if clist.is_empty() {
-                //println!("clist empty -- bailing out");
+                println!(">> clist empty -- bailing out");
                 break;
             }
             self.step(str_pos, ch, &mut clist, &mut nlist);

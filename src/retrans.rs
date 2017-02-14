@@ -1,16 +1,5 @@
 use reterm::*;
-
-pub type Label = usize;
-
-pub enum Instruction {
-    Char(char),
-    Match,
-    Jump(Label),
-    Split(Label, Label),
-    Abort
-}
-
-pub type Program = Vec<Instruction>;
+use reprog::*;
 
 pub struct RegexTranslator {
     pub prog: Program
@@ -19,23 +8,26 @@ pub struct RegexTranslator {
 impl RegexTranslator {
     pub fn new() -> RegexTranslator {
         RegexTranslator {
-            prog: vec!()
+            prog: Program::new()
         }
     }
 
-    pub fn compile(&mut self, regex: &Term) {
-        use self::Instruction::*;
+    pub fn get_program(&self) -> &Program {
+        &self.prog
+    }
+
+    pub fn compile(&mut self, regex: &Term, rule_nbr: usize) {
+        let start = self.prog.len();
+        self.prog.add_start(start);
         self.translate(regex);
-        self.prog.push(Match);
+        self.prog.push(Instruction::Match(rule_nbr));
     }
 
     fn translate(&mut self, regex: &Term) {
-        use self::Instruction::*;
+        use reprog::Instruction::*;
         use reterm::TermType::*;
         match regex.op {
-            Atom(c) => {
-                self.prog.push(Char(c));
-            },
+            Atom(c) => { self.prog.push(Char(c)); },
             Alternation => self.trans_alt(regex),
             Concatenation => self.trans_conc(regex),
             Iteration => self.trans_iter(regex),
@@ -45,7 +37,7 @@ impl RegexTranslator {
     }
 
     fn trans_alt(&mut self, regex: &Term) {
-        use self::Instruction::*;
+        use reprog::Instruction::*;
         let split_pos = self.prog.len();  // location of next available slot
         let l1 = split_pos + 1;
         self.prog.push(Abort);  // placeholder for eventual split L1,L2
@@ -68,7 +60,7 @@ impl RegexTranslator {
     }
 
     fn trans_iter(&mut self, regex: &Term) {
-        use self::Instruction::*;
+        use reprog::Instruction::*;
         let l1 = self.prog.len();
         self.prog.push(Abort);  // --> split L2,L3 
         let l2 = self.prog.len();
@@ -79,7 +71,7 @@ impl RegexTranslator {
     }
 
     fn trans_opt(&mut self, regex: &Term) {
-        use self::Instruction::*;
+        use reprog::Instruction::*;
         let split_pos = self.prog.len();
         self.prog.push(Abort);  // --> split L1,L2 
         let l1 = split_pos + 1; // == prog.len()
@@ -89,7 +81,7 @@ impl RegexTranslator {
     }
 
     fn trans_pos(&mut self, regex: &Term) {
-        use self::Instruction::*;
+        use reprog::Instruction::*;
         let l1 = self.prog.len();
         self.translate(&regex.subs[0]);
         let split_pos = self.prog.len();
@@ -98,15 +90,6 @@ impl RegexTranslator {
     }
 
     pub fn print_prog(&self) {
-        use self::Instruction::*;
-        for (pos, inst) in self.prog.iter().enumerate() {
-            match *inst {
-                Abort => println!("{}: abort", pos),
-                Char(c) => println!("{}: char {}", pos, c),
-                Match => println!("{}: match", pos),
-                Jump(l1) => println!("{}: jmp {}", pos, l1),
-                Split(l1, l2) => println!("{}: split {}, {}", pos, l1, l2)
-            }
-        }
+        self.prog.print();
     }
 }
