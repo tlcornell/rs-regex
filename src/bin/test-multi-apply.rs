@@ -127,17 +127,18 @@ fn test(regex_src: &RegexSource, text_src: &TextSource) {
     use rs_regex::retrans::RegexTranslator;
     use rs_regex::reinterp::ThompsonInterpreter;
 
+    let mut rule_nbr: usize = 0;
     let mut translator = RegexTranslator::new();
     for regex in &regex_src.regexes {
         let tree = parse(&regex);
         println!("{}", tree);
-        translator.compile(&tree);  // extend current program
+        translator.compile(&tree, rule_nbr);  // extend current program
+        rule_nbr += 1;
     }
 
     translator.print_prog();
 
 
-/*
     let mut interpreter = ThompsonInterpreter::new(&translator.prog);
     let text = &text_src.get_text();
     println!("{}", text);
@@ -146,10 +147,9 @@ fn test(regex_src: &RegexSource, text_src: &TextSource) {
         println!("There were no matches");
     } else {
         for m in interpreter.matches {
-            println!("There was a match from position 0 to {}", m);
+            println!("There was a match from position 0 to {} (rule {})", m.pos, m.rule);
         }
     }
-*/
 }
 
 

@@ -41,7 +41,7 @@ impl fmt::Display for Term {
  * There has to be a better way to do this, but for the life of me,
  * I can't find it.
  */
-fn tab_over(n: u8) {
+fn tab_over(n: usize) {
     for _ in 0..n {
         print!(" ");
     }
@@ -59,7 +59,7 @@ fn print_label(t: &Term) {
 }
 
 
-fn pretty_print(t: &Term, tab: u8) -> fmt::Result {
+fn pretty_print(t: &Term, tab: usize) -> fmt::Result {
     tab_over(tab);
     print_label(t);
     println!("");
