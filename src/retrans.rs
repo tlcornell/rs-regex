@@ -1,16 +1,66 @@
 use reterm::*;
+use std::ops::{Index, IndexMut};
 
 pub type Label = usize;
 
 pub enum Instruction {
     Char(char),
-    Match,
+    Match(usize),             // arg: rule#
     Jump(Label),
     Split(Label, Label),
     Abort
 }
 
-pub type Program = Vec<Instruction>;
+pub struct Program {
+    code: Vec<Instruction>,
+    starts: Vec<usize>,         // entry points
+    // Need some way of mapping Match instructions to rule #'s.
+}
+
+impl Program {
+    pub fn new() -> Program {
+        Program {
+            code: vec![],
+            starts: vec![],
+        }
+    }
+    pub fn len(&self) -> usize {
+        self.code.len()
+    }
+    pub fn push(&mut self, instr: Instruction) {
+        self.code.push(instr);
+    }
+    pub fn print(&self) {
+        use self::Instruction::*;
+        for (pos, inst) in self.code.iter().enumerate() {
+            let ref i: Instruction = *inst;
+            match *i {
+                Abort => println!("{}: abort", pos),
+                Char(c) => println!("{}: char {}", pos, c),
+                Match(r) => println!("{}: match {}", pos, r),
+                Jump(l1) => println!("{}: jmp {}", pos, l1),
+                Split(l1, l2) => println!("{}: split {}, {}", pos, l1, l2)
+            }
+        }
+    }
+}
+
+impl Index<usize> for Program {
+    type Output = Instruction;
+    fn index(&self, index: usize) -> &Instruction {
+        &self.code[index]
+    }
+}
+
+impl IndexMut<usize> for Program {
+    //type Output = Instruction;
+    fn index_mut(&mut self, index: usize) -> &mut Instruction {
+        &mut self.code[index]
+    }
+}
+
+
+
 
 pub struct RegexTranslator {
     pub prog: Program
@@ -19,14 +69,18 @@ pub struct RegexTranslator {
 impl RegexTranslator {
     pub fn new() -> RegexTranslator {
         RegexTranslator {
-            prog: vec!()
+            prog: Program::new()
         }
     }
 
+    pub fn get_program(&self) -> &Program {
+        &self.prog
+    }
+
     pub fn compile(&mut self, regex: &Term) {
-        use self::Instruction::*;
         self.translate(regex);
-        self.prog.push(Match);
+        let pc = self.prog.len();
+        self.prog.push(Instruction::Match(pc));
     }
 
     fn translate(&mut self, regex: &Term) {
@@ -98,15 +152,6 @@ impl RegexTranslator {
     }
 
     pub fn print_prog(&self) {
-        use self::Instruction::*;
-        for (pos, inst) in self.prog.iter().enumerate() {
-            match *inst {
-                Abort => println!("{}: abort", pos),
-                Char(c) => println!("{}: char {}", pos, c),
-                Match => println!("{}: match", pos),
-                Jump(l1) => println!("{}: jmp {}", pos, l1),
-                Split(l1, l2) => println!("{}: split {}, {}", pos, l1, l2)
-            }
-        }
+        self.prog.print();
     }
 }

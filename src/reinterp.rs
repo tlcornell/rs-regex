@@ -90,7 +90,7 @@ impl<'a> ThompsonInterpreter<'a> {
                     }
                     // otherwise the thread dies here
                 }
-                Match => {
+                Match(_) => {
                     //println!("Match");
                     self.matches.push(str_pos);
                 }
