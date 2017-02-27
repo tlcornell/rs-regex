@@ -33,6 +33,7 @@ impl RegexTranslator {
             Iteration => self.trans_iter(regex),
             Optional => self.trans_opt(regex),
             PositiveIteration => self.trans_pos(regex),
+            CharClassTerm(ref ccd) => self.trans_chcls(regex),
         }
     }
 
@@ -87,6 +88,10 @@ impl RegexTranslator {
         let split_pos = self.prog.len();
         let l3 = split_pos + 1;
         self.prog.push(Split(l1, l3));
+    }
+
+    fn trans_chcls(&mut self, regex: &Term) {
+        panic!("Unimplemented: trans_chcls");
     }
 
     pub fn print_prog(&self) {

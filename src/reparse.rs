@@ -109,6 +109,11 @@ fn parse_atom(text: &str) -> Option<(Term, &str)> {
             None => panic!("String ends in a backslash"),
             Some(c) => Some((Term::new(TermType::Atom(c), vec!()), &text[2..]))
         }
+    } else if text.starts_with("[") {
+        match parse_char_class(&text[1..]) {
+            None => None,
+            Some(result) => Some(result),
+        }
     } else {
         let c = text.chars().next().unwrap();
         Some((Term::new(TermType::Atom(c), vec!()), &text[1..]))
@@ -125,4 +130,109 @@ fn is_operator(ch: char) -> bool {
         '|' | '*' | '+' | '?' | ')'  => true,
         _ => false
     }
+}
+
+/**
+ * The caller has already consumed the leading '[', so text[0] is either
+ * '^' or a single char or the start of a char range.
+ */
+fn parse_char_class(text: &str) -> Option<(Term, &str)> {
+    //let mut i = 0;
+    let mut rmdr = text;
+    let mut negated = false;
+    if scan_given("^", rmdr) {
+        negated = true;
+        rmdr = &rmdr[1..];
+    }
+    /*
+    if text.as_bytes()[i] == '^' as u8 {
+        negated = true;
+        i += 1;
+    }
+    */
+    // There must be a character at text[i],
+    // but we don't know whether it is a singleton, or the start of a range.
+    let mut ranges: Vec<CharRange> = vec![];
+    loop { 
+        match scan_class_elt(rmdr) {
+            None => { break; },
+            Some((rng, nxt)) => {
+                ranges.push(rng);
+                rmdr = nxt;
+            }
+        }
+    }
+    rmdr = &rmdr[1..];
+    //i += 1;     // consume closing ']'
+
+    let ccd = CharClassData::new(!negated, ranges);
+    Some((Term::new(TermType::CharClassTerm(ccd), vec![]),
+          rmdr))
+}
+
+/**
+ * Scan text for singleton chars and char ranges.
+ * Return a char range (in either case), and the position of the 
+ * next unread byte in text.
+ * Probably needs to be wrapped in an Option.
+ * Note that a character might be represented as an escape sequence!
+ * E.g., to include ']' or maybe '^'.
+ *
+ * Someday there will be named classes, but this is not that day.
+ */
+fn scan_class_elt(text: &str) -> Option<(CharRange, &str)> {
+    let mut rmdr = text;
+    if scan_given("]", rmdr) {
+        return None;
+    }
+    match scan_class_elt_char(rmdr) {
+        None => { return None; }
+        Some((ch1, rmdr1)) => {
+            rmdr = rmdr1;
+            if !scan_given("-", rmdr) {
+                return Some((CharRange::new(ch1.clone(), ch1), rmdr));
+            }
+            rmdr = &rmdr[1..];
+            match scan_class_elt_char(rmdr) {
+                None => { return None; }
+                Some((ch2, rmdr2)) => {
+                    Some((CharRange::new(ch1, ch2), rmdr2))
+                }
+            }
+        }
+    }
+}
+
+fn scan_class_elt_char(text: &str) -> Option<(String, &str)> {
+    const HIBIT: u8 = 128;
+    let mut bytes = text.bytes();
+    let mut first = bytes.next().unwrap();
+    let mut start = 0;
+    let mut end = 0;
+    if first == '\\' as u8 {
+        first = bytes.next().unwrap();
+        start += 1;
+    }
+    if first < 0x7F {
+        end = start + 1;
+    } else if first >= 0xF0 {
+        end = start + 4;
+    } else if first >= 0xE0 {
+        end = start + 3;
+    } else if first >= 0xC0 {
+        end = start + 2;
+    } else {
+        unreachable!("UTF8 char scan failed!");
+    }
+
+    Some((text[start..end].to_string(), &text[end..]))
+}
+
+/**
+ * The expectation here is that ch will be a one ASCII-char string.
+ * This is for scanning for syntactically active characters, not general
+ * unicode code points.
+ */
+fn scan_given(ch: &str, text: &str) -> bool {
+    return ch.as_bytes()[0] == text.as_bytes()[0];
 }

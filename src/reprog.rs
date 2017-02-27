@@ -2,16 +2,24 @@
 // reprog.rs
 
 use std::ops::{Index, IndexMut};
+use std::fmt;
+use reterm::CharClassData;
 
 pub type Label = usize;
 
 pub enum Instruction {
     Char(char),
+    AnyChar,
+    CharClass(CharClassData),
     Match(usize),             // arg: rule#
     Jump(Label),
     Split(Label, Label),
     Abort
 }
+
+
+
+
 
 pub struct Program {
     code: Vec<Instruction>,
@@ -39,6 +47,8 @@ impl Program {
             match *i {
                 Abort => println!("{}: abort", pos),
                 Char(c) => println!("{}: char {}", pos, c),
+                AnyChar => println!("{}: any_char", pos),
+                CharClass(ref cc) => println!("{}: {}", pos, cc),
                 Match(r) => println!("{}: match {}", pos, r),
                 Jump(l1) => println!("{}: jmp {}", pos, l1),
                 Split(l1, l2) => println!("{}: split {}, {}", pos, l1, l2)

@@ -103,6 +103,12 @@ impl<'a> ThompsonInterpreter<'a> {
                     }
                     // otherwise the thread dies here
                 }
+                AnyChar => {
+                    nlist.add_task(pc + 1);
+                }
+                CharClass(_) => {
+
+                }
                 Match(r) => {
                     //println!("Match");
                     self.matches.push(MatchRecord::new(str_pos, r));
