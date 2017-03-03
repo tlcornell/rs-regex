@@ -65,10 +65,6 @@ impl RegexTranslator {
         self.label_map.insert(at_line, n);
     }
 
-    fn trans_char(&mut self, c: char, l0: Label, l: Label) {
-        self.emit(Char(CharInstData {ch: c, goto: l} ), l0);
-    }
-
     /*
         translate(a, L0) -->
             char a goto L0
@@ -132,8 +128,19 @@ impl RegexTranslator {
         self.emit(Split(l0, l), l1);
     }
 
+    fn trans_char(&mut self, c: char, l0: Label, l: Label) {
+        self.emit(Char(CharInstData {ch: c, goto: l} ), l0);
+    }
+
+    /*
+        translate([es], L0, L:
+            L0: charclass es goto L
+    */
     fn trans_chcls(&mut self, clsdata: &CharClassData, l0: Label, l: Label) {
-        
+        self.emit(CharClass(CharClassInst {
+            data: clsdata.clone(),
+            goto: l,
+        }), l0);
     }
 
     pub fn print_prog(&self) {

@@ -144,28 +144,21 @@ fn parse_char_class(text: &str) -> Option<(Term, &str)> {
         negated = true;
         rmdr = &rmdr[1..];
     }
-    /*
-    if text.as_bytes()[i] == '^' as u8 {
-        negated = true;
-        i += 1;
-    }
-    */
     // There must be a character at text[i],
     // but we don't know whether it is a singleton, or the start of a range.
-    let mut ranges: Vec<CharRange> = vec![];
+    let mut preds: Vec<CharClassPredicate> = vec![];
     loop { 
         match scan_class_elt(rmdr) {
             None => { break; },
-            Some((rng, nxt)) => {
-                ranges.push(rng);
+            Some((pred, nxt)) => {
+                preds.push(pred);
                 rmdr = nxt;
             }
         }
     }
     rmdr = &rmdr[1..];
-    //i += 1;     // consume closing ']'
 
-    let ccd = CharClassData::new(!negated, ranges);
+    let ccd = CharClassData::new(!negated, preds);
     Some((Term::new(TermType::CharClassTerm(ccd), vec![]),
           rmdr))
 }
@@ -180,7 +173,7 @@ fn parse_char_class(text: &str) -> Option<(Term, &str)> {
  *
  * Someday there will be named classes, but this is not that day.
  */
-fn scan_class_elt(text: &str) -> Option<(CharRange, &str)> {
+fn scan_class_elt(text: &str) -> Option<(CharClassPredicate, &str)> {
     let mut rmdr = text;
     if scan_given("]", rmdr) {
         return None;
@@ -189,14 +182,17 @@ fn scan_class_elt(text: &str) -> Option<(CharRange, &str)> {
         None => { return None; }
         Some((ch1, rmdr1)) => {
             rmdr = rmdr1;
+            if ch1 == '[' {
+                // Might be a named character class...
+            }
             if !scan_given("-", rmdr) {
-                return Some((CharRange::new(ch1.clone(), ch1), rmdr));
+                return Some((CharClassPredicate::Individual(ch1), rmdr));
             }
             rmdr = &rmdr[1..];
             match scan_class_elt_char(rmdr) {
-                None => { return None; }
+                None => { None }
                 Some((ch2, rmdr2)) => {
-                    Some((CharRange::new(ch1, ch2), rmdr2))
+                    Some((CharClassPredicate::Range(ch1, ch2), rmdr2))
                 }
             }
         }
@@ -234,6 +230,8 @@ fn scan_class_elt_char(text: &str) -> Option<(char, &str)> {
  * The expectation here is that ch will be a one ASCII-char string.
  * This is for scanning for syntactically active characters, not general
  * unicode code points.
+ * The character is not consumed from text even if it matches.
+ * The caller has to manage that.
  */
 fn scan_given(ch: &str, text: &str) -> bool {
     return ch.as_bytes()[0] == text.as_bytes()[0];

@@ -72,11 +72,10 @@ fn pretty_print(t: &Term, tab: usize) -> fmt::Result {
 }
 
 
-
 #[derive(Debug, Clone)]
 pub struct CharClassData {
     positive: bool,
-    ranges: Vec<CharRange>,
+    ranges: Vec<CharClassPredicate>,
 }
 
 
@@ -90,19 +89,32 @@ pub struct CharClassData {
  */
 impl CharClassData {
 
-    pub fn new(pos: bool, rngs: Vec<CharRange>) -> CharClassData {
+    pub fn new(pos: bool, preds: Vec<CharClassPredicate>) -> CharClassData {
         CharClassData {
             positive: pos,
-            ranges: rngs,       // take ownership
+            ranges: preds,       // take ownership
         }
     }
     
-    pub fn matches(&self, chstr: &str) -> bool {
-        let ch = chstr.chars().next().unwrap();
-        for rng in &self.ranges {
-            if ch >= rng.begin && ch < rng.end {
-                return self.positive;
-            }
+    pub fn matches(&self, ch: char) -> bool {
+        use self::CharClassPredicate::*;
+        let mut accum = false;
+        for pred in &self.ranges {
+            match *pred {
+                Range(c1, c2) => {
+                    if ch >= c1 && ch <= c2 && self.positive {
+                         return true;
+                    }
+                }
+                Individual(c1) => {
+                    if c1 == ch && self.positive {
+                        return true;
+                    }
+                }
+                Named(ref nm) => {
+                    panic!("matches() unimplemented for Named");
+                }
+            } 
         }
         !self.positive
     }
@@ -123,26 +135,28 @@ impl fmt::Display for CharClassData {
 
 
 #[derive(Debug, Clone)]
-pub struct CharRange {
-    begin: char,
-    end: char,
+pub enum CharClassPredicate {
+    Range(char, char),
+    Individual(char),
+    Named(String),
 }
 
-impl CharRange {
-    pub fn new(b: char, e: char) -> CharRange {
-        CharRange {
-            begin: b,
-            end: e,
-        }
-    }
-}
-
-impl fmt::Display for CharRange {
+impl fmt::Display for CharClassPredicate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.end == self.begin {
-            write!(f, "{}", self.begin)
-        } else {
-            write!(f, "{}-{}", self.begin, self.end)
+        use self::CharClassPredicate::*;
+        match *self {
+            Range(c1, c2) => {
+                write!(f, "{}-{}", c1, c2)
+            }
+            Individual(c) => {
+                write!(f, "{}", c)
+            }
+            Named(ref nm) => {
+                write!(f, "[:{}:]", nm)
+            }
         }
     }
 }
+
+
+

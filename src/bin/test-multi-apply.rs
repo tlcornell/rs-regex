@@ -108,6 +108,9 @@ impl RegexSource {
 
         for line in rxfile.lines() {
             let l1 = line.unwrap();
+            if l1.is_empty() {
+                continue;
+            }
             if l1.chars().next() == Some('#') {
                 continue;
             }
@@ -139,7 +142,6 @@ fn test(regex_src: &RegexSource, text_src: &TextSource) {
     translator.finish();
     translator.print_prog();
 
-    /*
 
     let mut interpreter = ThompsonInterpreter::new(&translator.prog);
     let text = &text_src.get_text();
@@ -152,7 +154,6 @@ fn test(regex_src: &RegexSource, text_src: &TextSource) {
             println!("There was a match from position 0 to {} (rule {})", m.pos, m.rule);
         }
     }
-    */
 }
 
 

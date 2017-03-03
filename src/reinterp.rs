@@ -104,8 +104,10 @@ impl<'a> ThompsonInterpreter<'a> {
                 AnyChar(ref data) => {
                     nlist.add_task(data.goto);
                 }
-                CharClass(_) => {
-
+                CharClass(ref ccd) => {
+                    if ccd.data.matches(ch) {
+                        nlist.add_task(ccd.goto);
+                    }
                 }
                 Match(ref data) => {
                     //println!("Match");
