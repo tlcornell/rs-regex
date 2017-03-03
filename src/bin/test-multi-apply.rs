@@ -132,15 +132,14 @@ fn test(regex_src: &RegexSource, text_src: &TextSource) {
     for regex in &regex_src.regexes {
         let tree = parse(&regex);
         println!("{}", tree);
-        /*
         translator.compile(&tree, rule_nbr);  // extend current program
-        */
         rule_nbr += 1;
     }
 
-    /*
+    translator.finish();
     translator.print_prog();
 
+    /*
 
     let mut interpreter = ThompsonInterpreter::new(&translator.prog);
     let text = &text_src.get_text();

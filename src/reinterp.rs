@@ -13,6 +13,7 @@
 use std::mem::swap;
 use reprog::*;
 use sparse::SparseSet; // cribbed from regex crate, and from its ancestors
+use reprog::Instruction::*;
 
 
 
@@ -80,9 +81,6 @@ impl<'a> ThompsonInterpreter<'a> {
         clist: &mut TaskList, 
         nlist: &mut TaskList
     ) {
-
-        use reprog::Instruction::*;
-
         //println!("str_pos = {}", str_pos);
         let mut i: usize = 0;
         loop {
@@ -96,35 +94,28 @@ impl<'a> ThompsonInterpreter<'a> {
             //println!("Executing instruction at line {}", pc);
             let inst = &self.prog[pc];
             match *inst {
-                Char(ic) => {
-                    if ic == ch {
+                Char(ref data) => {
+                    if data.ch == ch {
                         //println!("Add task to nlist at {}", pc + 1);
-                        nlist.add_task(pc + 1);
+                        nlist.add_task(data.goto);
                     }
                     // otherwise the thread dies here
                 }
-                AnyChar => {
-                    nlist.add_task(pc + 1);
+                AnyChar(ref data) => {
+                    nlist.add_task(data.goto);
                 }
                 CharClass(_) => {
 
                 }
-                Match(r) => {
+                Match(ref data) => {
                     //println!("Match");
-                    self.matches.push(MatchRecord::new(str_pos, r));
-                }
-                Jump(lbl) => {
-                    //println!("Task at {} added to clist", lbl);
-                    clist.add_task(lbl);
+                    self.matches.push(MatchRecord::new(str_pos, data.rule_id));
                 }
                 Split(l1, l2) => {
                     //println!("Task at {} added to clist", l1);
                     clist.add_task(l1);
                     //println!("Task at {} added to clist", l2);
                     clist.add_task(l2);
-                }
-                Abort => {
-                    panic!("Encountered Abort at {}", pc);
                 }
             }
         }

@@ -73,7 +73,7 @@ fn pretty_print(t: &Term, tab: usize) -> fmt::Result {
 
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CharClassData {
     positive: bool,
     ranges: Vec<CharRange>,
@@ -97,13 +97,14 @@ impl CharClassData {
         }
     }
     
-    pub fn matches(&self, ch: &str) -> bool {
+    pub fn matches(&self, chstr: &str) -> bool {
+        let ch = chstr.chars().next().unwrap();
         for rng in &self.ranges {
-            if ch >= &rng.begin[..] && ch < &rng.end[..] {
-                return true;
+            if ch >= rng.begin && ch < rng.end {
+                return self.positive;
             }
         }
-        false
+        !self.positive
     }
     
 }
@@ -123,12 +124,12 @@ impl fmt::Display for CharClassData {
 
 #[derive(Debug, Clone)]
 pub struct CharRange {
-    begin: String,
-    end: String,
+    begin: char,
+    end: char,
 }
 
 impl CharRange {
-    pub fn new(b: String, e: String) -> CharRange {
+    pub fn new(b: char, e: char) -> CharRange {
         CharRange {
             begin: b,
             end: e,

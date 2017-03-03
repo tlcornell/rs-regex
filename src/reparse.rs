@@ -203,29 +203,31 @@ fn scan_class_elt(text: &str) -> Option<(CharRange, &str)> {
     }
 }
 
-fn scan_class_elt_char(text: &str) -> Option<(String, &str)> {
+fn scan_class_elt_char(text: &str) -> Option<(char, &str)> {
     const HIBIT: u8 = 128;
     let mut bytes = text.bytes();
-    let mut first = bytes.next().unwrap();
+    let mut first: u8 = bytes.next().unwrap();
     let mut start = 0;
     let mut end = 0;
-    if first == '\\' as u8 {
+    if first == b'\\' {
         first = bytes.next().unwrap();
         start += 1;
     }
-    if first < 0x7F {
+    if first & 0b1000_0000 == 0b0000_0000 {
         end = start + 1;
-    } else if first >= 0xF0 {
-        end = start + 4;
-    } else if first >= 0xE0 {
-        end = start + 3;
-    } else if first >= 0xC0 {
+    } else if first & 0b1110_0000 == 0b1100_0000 {
         end = start + 2;
+    } else if first & 0b1111_0000 == 0b1110_0000 {
+        end = start + 3;
+    } else if first & 0b1111_1000 == 0b1111_0000 {
+        end = start + 4;
     } else {
         unreachable!("UTF8 char scan failed!");
     }
 
-    Some((text[start..end].to_string(), &text[end..]))
+    let c = text[start..].chars().next().unwrap();
+
+    Some((c, &text[end..]))
 }
 
 /**
