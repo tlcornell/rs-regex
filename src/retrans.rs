@@ -49,12 +49,13 @@ impl RegexTranslator {
 
     fn translate(&mut self, regex: &Term, l0: Label, l: Label) {
         match regex.op {
-            Atom(c) => self.trans_char(c, l0, l),
             Alternation => self.trans_alt(regex, l0, l),
             Concatenation => self.trans_conc(regex, l0, l),
             Iteration => self.trans_iter(regex, l0, l),
             Optional => self.trans_opt(regex, l0, l),
             PositiveIteration => self.trans_pos(regex, l0, l),
+            Atom(c) => self.trans_char(c, l0, l),
+            AnyCharTerm => self.trans_any_char(l0, l),
             CharClassTerm(ref ccd) => self.trans_chcls(ccd, l0, l),
         }
     }
@@ -130,6 +131,10 @@ impl RegexTranslator {
 
     fn trans_char(&mut self, c: char, l0: Label, l: Label) {
         self.emit(Char(CharInstData {ch: c, goto: l} ), l0);
+    }
+
+    fn trans_any_char(&mut self, l0: Label, l: Label) {
+        self.emit(AnyChar(AnyCharInst {goto: l}), l0);
     }
 
     /*

@@ -5,7 +5,7 @@ pub fn parse(text: &str) -> Term
     match parse_regex(text) {
         Some((t, s)) => {
             if !s.is_empty() {
-                println!("Did not parse whole string. Remainder: '{}'", s);
+                println!("Did not parse the whole regex string. Remainder: '{}'", s);
             }
             t
         },
@@ -116,7 +116,11 @@ fn parse_atom(text: &str) -> Option<(Term, &str)> {
         }
     } else {
         let c = text.chars().next().unwrap();
-        Some((Term::new(TermType::Atom(c), vec!()), &text[1..]))
+        if c == '.' {
+            Some((Term::new(TermType::AnyCharTerm, vec!()), &text[1..]))
+        } else {
+            Some((Term::new(TermType::Atom(c), vec!()), &text[1..]))
+        }
     }
 }
 
@@ -200,11 +204,10 @@ fn scan_class_elt(text: &str) -> Option<(CharClassPredicate, &str)> {
 }
 
 fn scan_class_elt_char(text: &str) -> Option<(char, &str)> {
-    const HIBIT: u8 = 128;
     let mut bytes = text.bytes();
     let mut first: u8 = bytes.next().unwrap();
     let mut start = 0;
-    let mut end = 0;
+    let end;
     if first == b'\\' {
         first = bytes.next().unwrap();
         start += 1;

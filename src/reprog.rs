@@ -42,13 +42,12 @@ impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::Instruction::*;
         match *self {
-            Char(ref data) => print!("char {} goto {}", data.ch, data.goto),
-            AnyChar(ref data) => print!("any_char goto {}", data.goto),
-            CharClass(ref cc) => print!("{} goto {}", cc.data, cc.goto),
-            Match(ref data) => print!("match {}", data.rule_id),
-            Split(l1, l2) => print!("split {}, {}", l1, l2)
+            Char(ref data) => write!(f, "char {} goto {}", data.ch, data.goto),
+            AnyChar(ref data) => write!(f, "any_char goto {}", data.goto),
+            CharClass(ref cc) => write!(f, "{} goto {}", cc.data, cc.goto),
+            Match(ref data) => write!(f, "match {}", data.rule_id),
+            Split(l1, l2) => write!(f, "split {}, {}", l1, l2),
         }
-        Ok(())
     }
 }
 
@@ -75,7 +74,6 @@ impl Program {
         self.code.push(instr);
     }
     pub fn print(&self) {
-        use self::Instruction::*;
         for (pos, inst) in self.code.iter().enumerate() {
             println!("{:03}: {}", pos, *inst);
         }

@@ -9,6 +9,7 @@ pub enum TermType {
     Optional,
     Atom(char),
     CharClassTerm(CharClassData),
+    AnyCharTerm,
 }
 
 #[derive(Debug)]
@@ -57,6 +58,7 @@ fn print_label(t: &Term) {
         TermType::PositiveIteration => { print!("POSITIVE_ITERATION"); },
         TermType::Optional => { print!("OPTIONAL"); },
         TermType::CharClassTerm(ref ccd) => { print!("CHAR_CLASS {}", ccd); },
+        TermType::AnyCharTerm => { print!("ANY_CHAR"); }
     }
 }
 
@@ -98,7 +100,6 @@ impl CharClassData {
     
     pub fn matches(&self, ch: char) -> bool {
         use self::CharClassPredicate::*;
-        let mut accum = false;
         for pred in &self.ranges {
             match *pred {
                 Range(c1, c2) => {
@@ -111,7 +112,7 @@ impl CharClassData {
                         return true;
                     }
                 }
-                Named(ref nm) => {
+                Named(_) => {
                     panic!("matches() unimplemented for Named");
                 }
             } 
