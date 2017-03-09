@@ -7,8 +7,8 @@ pub enum TermType {
     Iteration,
     PositiveIteration,
     Optional,
-    Atom(char),
-    CharClassTerm(CharClassData),
+    Atom(char, bool),
+    CharClassTerm(CharClassData, bool),
     AnyCharTerm,
 }
 
@@ -50,15 +50,26 @@ fn tab_over(n: usize) {
 }
 
 fn print_label(t: &Term) {
+    use self::TermType::*;
     match t.op {
-        TermType::Atom(c) => { print!("ATOM '{}'", c); },
-        TermType::Concatenation => { print!("CONCATENATION"); },
-        TermType::Alternation => { print!("ALTERNATION"); },
-        TermType::Iteration => { print!("FREE_ITERATION"); },
-        TermType::PositiveIteration => { print!("POSITIVE_ITERATION"); },
-        TermType::Optional => { print!("OPTIONAL"); },
-        TermType::CharClassTerm(ref ccd) => { print!("CHAR_CLASS {}", ccd); },
-        TermType::AnyCharTerm => { print!("ANY_CHAR"); }
+        Concatenation => { print!("CONCATENATION"); },
+        Alternation => { print!("ALTERNATION"); },
+        Iteration => { print!("FREE_ITERATION"); },
+        PositiveIteration => { print!("POSITIVE_ITERATION"); },
+        Optional => { print!("OPTIONAL"); },
+        Atom(c, nocase) => { 
+            print!("ATOM '{}'", c); 
+            if nocase {
+                print!(" (?i)");
+            } 
+        },
+        CharClassTerm(ref ccd, nocase) => { 
+            print!("CHAR_CLASS {}", ccd); 
+            if nocase {
+                print!(" (?i)");
+            }  
+        },
+        AnyCharTerm => { print!("ANY_CHAR"); },
     }
 }
 
@@ -103,11 +114,13 @@ impl CharClassData {
         for pred in &self.ranges {
             match *pred {
                 Range(c1, c2) => {
+                    println!("Range({}, {})", c1, c2);
                     if ch >= c1 && ch <= c2 && self.positive {
                          return true;
                     }
                 }
                 Individual(c1) => {
+                    println!("Individual({})", c1);
                     if c1 == ch && self.positive {
                         return true;
                     }

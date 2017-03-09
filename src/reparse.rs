@@ -1,8 +1,20 @@
 use reterm::*;
 
+
+struct ParseContext {
+    no_case: bool,
+}
+
+impl ParseContext {
+    pub fn new() -> ParseContext {
+        ParseContext { no_case: false, }
+    }
+}
+
 pub fn parse(text: &str) -> Term
 {
-    match parse_regex(text) {
+    let mut ctx = ParseContext::new();
+    match parse_regex(text, &mut ctx) {
         Some((t, s)) => {
             if !s.is_empty() {
                 println!("Did not parse the whole regex string. Remainder: '{}'", s);
@@ -20,21 +32,21 @@ pub fn parse(text: &str) -> Term
  * <iter> ::= <base> OR <iter> '*' OR <iter> '+' OR <iter> '?'
  * <base> ::= <char> OR '(' <regex> ')' OR '\' <char> OR '.'
  */
-fn parse_regex(text: &str) -> Option<(Term, &str)>
+fn parse_regex<'a>(text: &'a str, ctx: &mut ParseContext) -> Option<(Term, &'a str)>
 {
     //println!("parse_regex '{}'", text);
-    parse_alt(text)
+    parse_alt(text, ctx)
 }
 
-fn parse_alt(text: &str) -> Option<(Term, &str)> {
+fn parse_alt<'a>(text: &'a str, ctx: &mut ParseContext) -> Option<(Term, &'a str)> {
     //println!("parse_alt '{}'", text);
-    match parse_conc(text) {
+    match parse_conc(text, ctx) {
         None => None,
         Some((t1, rmdr1)) => {
             if !rmdr1.starts_with("|") {
                 Some((t1, rmdr1))
             } else {
-                match parse_alt(&rmdr1[1..]) {
+                match parse_alt(&rmdr1[1..], ctx) {
                     None => None,
                     Some((t2, rmdr2)) => 
                         Some((Term::new(TermType::Alternation, vec!(t1, t2)), rmdr2))
@@ -44,16 +56,16 @@ fn parse_alt(text: &str) -> Option<(Term, &str)> {
     }
 }
 
-fn parse_conc(text: &str) -> Option<(Term, &str)> {
+fn parse_conc<'a>(text: &'a str, ctx: &mut ParseContext) -> Option<(Term, &'a str)> {
     //println!("parse_conc '{}'", text);
-    match parse_iter(text) {
+    match parse_iter(text, ctx) {
         None => None,
         Some((t1, rmdr1)) => {
             if rmdr1.is_empty() || is_operator(rmdr1.chars().next().unwrap()) {
                 // 'is_operator' really means 'is_not_a_character_literal'
                 Some((t1, rmdr1))
             } else {
-                match parse_conc(rmdr1) {
+                match parse_conc(rmdr1, ctx) {
                     None => None,
                     Some((t2, rmdr2)) =>
                         Some((Term::new(TermType::Concatenation, vec!(t1, t2)), rmdr2))
@@ -68,9 +80,9 @@ fn parse_conc(text: &str) -> Option<(Term, &str)> {
  *    <iter> -> <iter> '*'
  * But this is left-recursive.
  */
-fn parse_iter(text: &str) -> Option<(Term, &str)> {
+fn parse_iter<'a>(text: &'a str, ctx: &mut ParseContext) -> Option<(Term, &'a str)> {
     //println!("parse_iter '{}'", text);
-    match parse_atom(text) {
+    match parse_atom(text, ctx) {
         None => None,
         Some((mut t1, mut rmdr1)) => {
             loop {
@@ -90,36 +102,41 @@ fn parse_iter(text: &str) -> Option<(Term, &str)> {
     }
 }
 
-fn parse_atom(text: &str) -> Option<(Term, &str)> {
+fn parse_atom<'a>(text: &'a str, ctx: &mut ParseContext) -> Option<(Term, &'a str)> {
     //println!("parse_atom '{}'", text);
     if text.starts_with("(") {
-        match parse_regex(&text[1..]) {
-            None => None,
-            Some((t, rmdr)) => {
-                if !rmdr.starts_with(")") {
-                    None
-                } else {
-                    Some((t, &rmdr[1..]))
+        if text[1..].starts_with("?") {
+            let rmdr = scan_flags(&text[2..], ctx);
+            parse_atom(rmdr, ctx)
+        } else {
+            match parse_regex(&text[1..], ctx) {
+                None => None,
+                Some((t, rmdr)) => {
+                    if !rmdr.starts_with(")") {
+                        None
+                    } else {
+                        Some((t, &rmdr[1..]))
+                    }
                 }
             }
         }
     } else if text.starts_with("\\") {
         let optc = text.chars().nth(1);
         match optc {
-            None => panic!("String ends in a backslash"),
-            Some(c) => Some((Term::new(TermType::Atom(c), vec!()), &text[2..]))
+            None => panic!("PARSE ERROR: String ends in a backslash"),
+            Some(c) => Some((Term::new(TermType::Atom(c, ctx.no_case), 
+                                       vec!()), 
+                             &text[2..]))
         }
     } else if text.starts_with("[") {
-        match parse_char_class(&text[1..]) {
-            None => None,
-            Some(result) => Some(result),
-        }
+        parse_char_class(&text[1..], ctx)
     } else {
         let c = text.chars().next().unwrap();
         if c == '.' {
             Some((Term::new(TermType::AnyCharTerm, vec!()), &text[1..]))
         } else {
-            Some((Term::new(TermType::Atom(c), vec!()), &text[1..]))
+            Some((Term::new(TermType::Atom(c, ctx.no_case), vec!()), 
+                  &text[1..]))
         }
     }
 }
@@ -140,7 +157,7 @@ fn is_operator(ch: char) -> bool {
  * The caller has already consumed the leading '[', so text[0] is either
  * '^' or a single char or the start of a char range.
  */
-fn parse_char_class(text: &str) -> Option<(Term, &str)> {
+fn parse_char_class<'a>(text: &'a str, ctx: &mut ParseContext) -> Option<(Term, &'a str)> {
     //let mut i = 0;
     let mut rmdr = text;
     let mut negated = false;
@@ -163,7 +180,7 @@ fn parse_char_class(text: &str) -> Option<(Term, &str)> {
     rmdr = &rmdr[1..];
 
     let ccd = CharClassData::new(!negated, preds);
-    Some((Term::new(TermType::CharClassTerm(ccd), vec![]),
+    Some((Term::new(TermType::CharClassTerm(ccd, ctx.no_case), vec![]),
           rmdr))
 }
 
@@ -229,6 +246,36 @@ fn scan_class_elt_char(text: &str) -> Option<(char, &str)> {
     Some((c, &text[end..]))
 }
 
+
+/**
+ * When this is called, we have already consumed the "(?" prefix
+ *
+ * <flags> ::= '(' '?' <flag-setting>+ ')'
+ * <flag-setting> ::= '-'? <flag-letter>
+ * <flag-letter> ::= 'i'
+ */
+fn scan_flags<'a>(text: &'a str, ctx: &mut ParseContext) -> &'a str /*-> Option<(Term, &str)>*/ {
+    let mut unset = false;
+    let mut i = 0;
+    for c in text.bytes() {
+        i += 1;
+        match c {
+            b')' => { break; }
+            b'-' => { unset = true; }
+            b'i' => {
+                if unset {
+                    ctx.no_case = false; 
+                } else {
+                    ctx.no_case = true; 
+                }
+            }
+            _ => { panic!("PARSE ERROR: Unrecognized flag character {}", c); }
+        }
+    }
+    &text[i..]
+}
+
+
 /**
  * The expectation here is that ch will be a one ASCII-char string.
  * This is for scanning for syntactically active characters, not general
@@ -239,3 +286,4 @@ fn scan_class_elt_char(text: &str) -> Option<(char, &str)> {
 fn scan_given(ch: &str, text: &str) -> bool {
     return ch.as_bytes()[0] == text.as_bytes()[0];
 }
+

@@ -39,7 +39,7 @@ impl TaskList {
     }
 
     pub fn add_task(&mut self, pc: Label) {
-        //println!("Adding task with pc = {}", pc);
+        println!("Adding task with pc = {}", pc);
         if !self.t.contains(pc) {
             self.t.insert(pc);
         }
@@ -81,7 +81,7 @@ impl<'a> ThompsonInterpreter<'a> {
         clist: &mut TaskList, 
         nlist: &mut TaskList
     ) {
-        //println!("str_pos = {}", str_pos);
+        println!("str_pos = {}", str_pos);
         let mut i: usize = 0;
         loop {
             if i >= clist.len() {
@@ -91,13 +91,18 @@ impl<'a> ThompsonInterpreter<'a> {
             let pc = clist.t.at(i);
             i += 1;
 
-            //println!("Executing instruction at line {}", pc);
+            println!("Executing instruction at line {}", pc);
             let inst = &self.prog[pc];
             match *inst {
                 Char(ref data) => {
                     if data.ch == ch {
                         //println!("Add task to nlist at {}", pc + 1);
                         nlist.add_task(data.goto);
+                    } else if data.nocase {
+                        if data.ch.to_lowercase().collect::<String>() == 
+                           ch.to_lowercase().collect::<String>() {
+                            nlist.add_task(data.goto);
+                        }
                     }
                     // otherwise the thread dies here
                 }
@@ -107,6 +112,10 @@ impl<'a> ThompsonInterpreter<'a> {
                 CharClass(ref ccd) => {
                     if ccd.data.matches(ch) {
                         nlist.add_task(ccd.goto);
+                    } else if ccd.nocase {
+                        if ccd.data.matches(ch.to_lowercase().next().unwrap()) {
+                            nlist.add_task(ccd.goto);
+                        }
                     }
                 }
                 Match(ref data) => {
@@ -123,6 +132,7 @@ impl<'a> ThompsonInterpreter<'a> {
         }
 
     }
+
 
 
     /**

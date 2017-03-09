@@ -55,6 +55,8 @@ impl SparseSet {
     /** 
      * Note no membership test, so you might want to guard calls to insert()
      * to prevent self.dense from growing and containing garbage.
+     * That is, we assume here as a pre-condition that value is known
+     * not to be in the set already.
      */
     pub fn insert(&mut self, value: usize) {
         let i = self.size;

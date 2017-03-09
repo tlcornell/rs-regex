@@ -54,9 +54,9 @@ impl RegexTranslator {
             Iteration => self.trans_iter(regex, l0, l),
             Optional => self.trans_opt(regex, l0, l),
             PositiveIteration => self.trans_pos(regex, l0, l),
-            Atom(c) => self.trans_char(c, l0, l),
+            Atom(c, nocase) => self.trans_char(c, nocase, l0, l),
+            CharClassTerm(ref ccd, nocase) => self.trans_chcls(ccd, nocase, l0, l),
             AnyCharTerm => self.trans_any_char(l0, l),
-            CharClassTerm(ref ccd) => self.trans_chcls(ccd, l0, l),
         }
     }
 
@@ -129,8 +129,8 @@ impl RegexTranslator {
         self.emit(Split(l0, l), l1);
     }
 
-    fn trans_char(&mut self, c: char, l0: Label, l: Label) {
-        self.emit(Char(CharInstData {ch: c, goto: l} ), l0);
+    fn trans_char(&mut self, c: char, nocase: bool, l0: Label, l: Label) {
+        self.emit(Char(CharInstData {ch: c, nocase: nocase, goto: l} ), l0);
     }
 
     fn trans_any_char(&mut self, l0: Label, l: Label) {
@@ -141,9 +141,12 @@ impl RegexTranslator {
         translate([es], L0, L:
             L0: charclass es goto L
     */
-    fn trans_chcls(&mut self, clsdata: &CharClassData, l0: Label, l: Label) {
+    fn trans_chcls(&mut self, 
+                   clsdata: &CharClassData, nocase: bool, 
+                   l0: Label, l: Label) {
         self.emit(CharClass(CharClassInst {
             data: clsdata.clone(),
+            nocase: nocase,
             goto: l,
         }), l0);
     }

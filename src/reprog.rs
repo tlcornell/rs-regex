@@ -19,6 +19,7 @@ pub enum Instruction {
 
 pub struct CharInstData {
     pub ch: char,
+    pub nocase: bool,
     pub goto: Label,
 }
 
@@ -33,8 +34,10 @@ pub struct MatchInst {
 
 pub struct CharClassInst {
     pub data: CharClassData,
+    pub nocase: bool,
     pub goto: Label,
 }
+
 
 
 
@@ -42,9 +45,11 @@ impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::Instruction::*;
         match *self {
-            Char(ref data) => write!(f, "char {} goto {}", data.ch, data.goto),
+            Char(ref data) =>  write!(f, "char {} goto {} {}", data.ch, data.goto,
+                if data.nocase { " [nocase]" } else { "" }),
             AnyChar(ref data) => write!(f, "any_char goto {}", data.goto),
-            CharClass(ref cc) => write!(f, "{} goto {}", cc.data, cc.goto),
+            CharClass(ref cc) => write!(f, "{} goto {} {}", cc.data, cc.goto,
+                if cc.nocase { " [nocase]" } else { "" }),
             Match(ref data) => write!(f, "match {}", data.rule_id),
             Split(l1, l2) => write!(f, "split {}, {}", l1, l2),
         }
@@ -57,7 +62,6 @@ impl fmt::Display for Instruction {
 pub struct Program {
     code: Vec<Instruction>,
     pub starts: Vec<usize>,         // entry points
-    // Need some way of mapping Match instructions to rule #'s.
 }
 
 impl Program {
@@ -90,6 +94,7 @@ impl Program {
                 Char(ref data) => { 
                     code_new.push(Char(CharInstData {
                         ch: data.ch, 
+                        nocase: data.nocase,
                         goto: lblmap[&data.goto],
                     }));
                 }
@@ -101,6 +106,7 @@ impl Program {
                 CharClass(ref ccdata) => {
                     code_new.push(CharClass(CharClassInst {
                         data: ccdata.data.clone(),
+                        nocase: ccdata.nocase,
                         goto: lblmap[&ccdata.goto],
                     }));
                 }
