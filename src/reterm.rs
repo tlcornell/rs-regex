@@ -7,7 +7,9 @@ pub enum TermType {
     Iteration,
     PositiveIteration,
     Optional,
-    Atom(char),
+    Atom(char, bool),
+    CharClassTerm(CharClassData, bool),
+    AnyCharTerm,
 }
 
 #[derive(Debug)]
@@ -48,13 +50,26 @@ fn tab_over(n: usize) {
 }
 
 fn print_label(t: &Term) {
+    use self::TermType::*;
     match t.op {
-        TermType::Atom(c) => { print!("ATOM '{}'", c); },
-        TermType::Concatenation => { print!("CONCATENATION"); },
-        TermType::Alternation => { print!("ALTERNATION"); },
-        TermType::Iteration => { print!("FREE_ITERATION"); },
-        TermType::PositiveIteration => { print!("POSITIVE_ITERATION"); },
-        TermType::Optional => { print!("OPTIONAL"); },
+        Concatenation => { print!("CONCATENATION"); },
+        Alternation => { print!("ALTERNATION"); },
+        Iteration => { print!("FREE_ITERATION"); },
+        PositiveIteration => { print!("POSITIVE_ITERATION"); },
+        Optional => { print!("OPTIONAL"); },
+        Atom(c, nocase) => { 
+            print!("ATOM '{}'", c); 
+            if nocase {
+                print!(" (?i)");
+            } 
+        },
+        CharClassTerm(ref ccd, nocase) => { 
+            print!("CHAR_CLASS {}", ccd); 
+            if nocase {
+                print!(" (?i)");
+            }  
+        },
+        AnyCharTerm => { print!("ANY_CHAR"); },
     }
 }
 
@@ -68,3 +83,94 @@ fn pretty_print(t: &Term, tab: usize) -> fmt::Result {
     }
     Ok(())
 }
+
+
+#[derive(Debug, Clone)]
+pub struct CharClassData {
+    positive: bool,
+    ranges: Vec<CharClassPredicate>,
+}
+
+
+/**
+ * The implementation of matches() doesn't really belong here.
+ * It has to harmonize with other matches() methods used by the interpreter.
+ * So probably there needs to be a trait defined somewhere that 
+ * allows us to extend CharClassData with what we need to interpret it.
+ * This is all because this struct is shared between the char class term
+ * and the char class instruction.
+ */
+impl CharClassData {
+
+    pub fn new(pos: bool, preds: Vec<CharClassPredicate>) -> CharClassData {
+        CharClassData {
+            positive: pos,
+            ranges: preds,       // take ownership
+        }
+    }
+    
+    pub fn matches(&self, ch: char) -> bool {
+        use self::CharClassPredicate::*;
+        for pred in &self.ranges {
+            match *pred {
+                Range(c1, c2) => {
+                    println!("Range({}, {})", c1, c2);
+                    if ch >= c1 && ch <= c2 && self.positive {
+                         return true;
+                    }
+                }
+                Individual(c1) => {
+                    println!("Individual({})", c1);
+                    if c1 == ch && self.positive {
+                        return true;
+                    }
+                }
+                Named(_) => {
+                    panic!("matches() unimplemented for Named");
+                }
+            } 
+        }
+        !self.positive
+    }
+    
+}
+
+impl fmt::Display for CharClassData {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if !self.positive {
+            try!(write!(f, "NOT "));
+        }
+        for rng in &self.ranges {
+            try!(write!(f, "{} ", rng));
+        }
+        Ok(())
+    }
+}
+
+
+#[derive(Debug, Clone)]
+pub enum CharClassPredicate {
+    Range(char, char),
+    Individual(char),
+    Named(String),
+}
+
+impl fmt::Display for CharClassPredicate {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::CharClassPredicate::*;
+        match *self {
+            Range(c1, c2) => {
+                write!(f, "{}-{}", c1, c2)
+            }
+            Individual(c) => {
+                write!(f, "{}", c)
+            }
+            Named(ref nm) => {
+                write!(f, "[:{}:]", nm)
+            }
+        }
+    }
+}
+
+
+

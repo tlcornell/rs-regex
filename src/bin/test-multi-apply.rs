@@ -108,6 +108,9 @@ impl RegexSource {
 
         for line in rxfile.lines() {
             let l1 = line.unwrap();
+            if l1.is_empty() {
+                continue;
+            }
             if l1.chars().next() == Some('#') {
                 continue;
             }
@@ -136,6 +139,7 @@ fn test(regex_src: &RegexSource, text_src: &TextSource) {
         rule_nbr += 1;
     }
 
+    translator.finish();
     translator.print_prog();
 
 
@@ -159,6 +163,7 @@ fn main() {
 
     let text_src = TextSource::new(&cfg);
     let regex_src = RegexSource::new(&cfg);
+    // Now regex_src should be the owner of the regexes.
 
     // Test: Apply the given regex to the given text string
     test(&regex_src, &text_src);

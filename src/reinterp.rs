@@ -13,6 +13,7 @@
 use std::mem::swap;
 use reprog::*;
 use sparse::SparseSet; // cribbed from regex crate, and from its ancestors
+use reprog::Instruction::*;
 
 
 
@@ -38,7 +39,7 @@ impl TaskList {
     }
 
     pub fn add_task(&mut self, pc: Label) {
-        //println!("Adding task with pc = {}", pc);
+        println!("Adding task with pc = {}", pc);
         if !self.t.contains(pc) {
             self.t.insert(pc);
         }
@@ -80,10 +81,7 @@ impl<'a> ThompsonInterpreter<'a> {
         clist: &mut TaskList, 
         nlist: &mut TaskList
     ) {
-
-        use reprog::Instruction::*;
-
-        //println!("str_pos = {}", str_pos);
+        println!("str_pos = {}", str_pos);
         let mut i: usize = 0;
         loop {
             if i >= clist.len() {
@@ -93,23 +91,36 @@ impl<'a> ThompsonInterpreter<'a> {
             let pc = clist.t.at(i);
             i += 1;
 
-            //println!("Executing instruction at line {}", pc);
+            println!("Executing instruction at line {}", pc);
             let inst = &self.prog[pc];
             match *inst {
-                Char(ic) => {
-                    if ic == ch {
+                Char(ref data) => {
+                    if data.ch == ch {
                         //println!("Add task to nlist at {}", pc + 1);
-                        nlist.add_task(pc + 1);
+                        nlist.add_task(data.goto);
+                    } else if data.nocase {
+                        if data.ch.to_lowercase().collect::<String>() == 
+                           ch.to_lowercase().collect::<String>() {
+                            nlist.add_task(data.goto);
+                        }
                     }
                     // otherwise the thread dies here
                 }
-                Match(r) => {
-                    //println!("Match");
-                    self.matches.push(MatchRecord::new(str_pos, r));
+                AnyChar(ref data) => {
+                    nlist.add_task(data.goto);
                 }
-                Jump(lbl) => {
-                    //println!("Task at {} added to clist", lbl);
-                    clist.add_task(lbl);
+                CharClass(ref ccd) => {
+                    if ccd.data.matches(ch) {
+                        nlist.add_task(ccd.goto);
+                    } else if ccd.nocase {
+                        if ccd.data.matches(ch.to_lowercase().next().unwrap()) {
+                            nlist.add_task(ccd.goto);
+                        }
+                    }
+                }
+                Match(ref data) => {
+                    //println!("Match");
+                    self.matches.push(MatchRecord::new(str_pos, data.rule_id));
                 }
                 Split(l1, l2) => {
                     //println!("Task at {} added to clist", l1);
@@ -117,13 +128,11 @@ impl<'a> ThompsonInterpreter<'a> {
                     //println!("Task at {} added to clist", l2);
                     clist.add_task(l2);
                 }
-                Abort => {
-                    panic!("Encountered Abort at {}", pc);
-                }
             }
         }
 
     }
+
 
 
     /**
