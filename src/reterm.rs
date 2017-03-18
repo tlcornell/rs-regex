@@ -114,13 +114,13 @@ impl CharClassData {
         for pred in &self.ranges {
             match *pred {
                 Range(c1, c2) => {
-                    println!("Range({}, {})", c1, c2);
+                    //println!("Range({}, {})", c1, c2);
                     if ch >= c1 && ch <= c2 && self.positive {
                          return true;
                     }
                 }
                 Individual(c1) => {
-                    println!("Individual({})", c1);
+                    //println!("Individual({})", c1);
                     if c1 == ch && self.positive {
                         return true;
                     }

@@ -5,3 +5,4 @@ pub mod reinterp;
 mod reterm;
 pub mod reprog;
 mod sparse;
+mod util;

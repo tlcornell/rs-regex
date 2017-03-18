@@ -8,6 +8,7 @@ use reterm::CharClassData;
 
 pub type Label = usize;
 
+#[derive(Debug)]
 pub enum Instruction {
     Char(CharInstData),
     AnyChar(AnyCharInst),
@@ -17,21 +18,25 @@ pub enum Instruction {
 }
 
 
+#[derive(Clone, Copy, Debug)]
 pub struct CharInstData {
     pub ch: char,
     pub nocase: bool,
     pub goto: Label,
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct AnyCharInst {
     pub goto: Label,
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct MatchInst {
     pub rule_id: usize,
     //pub goto: Label,
 }
 
+#[derive(Debug)]
 pub struct CharClassInst {
     pub data: CharClassData,
     pub nocase: bool,
@@ -59,6 +64,7 @@ impl fmt::Display for Instruction {
 
 
 
+#[derive(Debug)]
 pub struct Program {
     code: Vec<Instruction>,
     pub starts: Vec<usize>,         // entry points

@@ -143,7 +143,7 @@ fn test(regex_src: &RegexSource, text_src: &TextSource) {
     translator.print_prog();
 
 
-    let mut interpreter = ThompsonInterpreter::new(&translator.prog);
+    let mut interpreter = ThompsonInterpreter::new(translator.prog);
     let text = &text_src.get_text();
     println!("{}", text);
     interpreter.apply(&text);
@@ -151,7 +151,7 @@ fn test(regex_src: &RegexSource, text_src: &TextSource) {
         println!("There were no matches");
     } else {
         for m in interpreter.matches {
-            println!("There was a match from position 0 to {} (rule {})", m.pos, m.rule);
+            println!("There was a match from position 0 to {} (rule {})", m.len, m.rule);
         }
     }
 }
