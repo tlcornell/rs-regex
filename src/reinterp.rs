@@ -17,6 +17,7 @@ use reprog::Instruction::*;
 use util::char_at;
 
 
+
 struct TaskList {
     t: SparseSet,
 }
@@ -61,17 +62,22 @@ impl MatchRecord {
 
 
 
+pub type TokenizerAction = fn(&str) -> ();
+
+
 pub struct ThompsonInterpreter {
     pub matches: Vec<MatchRecord>, // string positions where matches ended
     prog: Program,
+    actions: Vec<TokenizerAction>,
 }
 
 impl ThompsonInterpreter {
     
-    pub fn new(p: Program) -> ThompsonInterpreter {
+    pub fn new(p: Program, acts: Vec<TokenizerAction>) -> ThompsonInterpreter {
         ThompsonInterpreter {
             matches: vec![],
             prog: p,
+            actions: acts,
         }
     }
 
@@ -103,18 +109,18 @@ impl ThompsonInterpreter {
      * then the whole procedure will terminate. There is a global notion of
      * failure which can be checked then, namely were there any matches. 
      */
-    fn step(
+    fn advance(
         &mut self, 
         str_pos: usize, 
         ch: char, 
         clist: &mut TaskList, 
         nlist: &mut TaskList
     ) {
-        //println!("step: '{}'", ch);
+        //println!("advance: '{}'", ch);
         let mut i: usize = 0;
         loop {
             if i >= clist.len() {
-                //println!("finished with clist, end of match step");
+                //println!("finished with clist, end of match advance");
                 return; // really we want to break out of the outer loop here...
             }
 
@@ -193,15 +199,8 @@ impl ThompsonInterpreter {
 
             pos += nxt;
 
-            match char_at(&text[pos..] /*text, pos*/) {
+            match char_at(&text[pos..]) {
                 None => { 
-                    println!("char_at returned None");
-                    // BUG: This can mean one of two things: UTF-8 decoding
-                    // failed, or we are out of string. In the latter case 
-                    // (pos == text.len()?), we might still have some work
-                    // to do (i.e., executing any last Match instructions).
-                    // But in the former case, it's a real error, and we
-                    // may not be able to continue...
                     if pos == text.len() {
                         ch = 0 as char;
                     } else {
@@ -215,7 +214,8 @@ impl ThompsonInterpreter {
                 }
             }
 
-            self.step(pos, ch, &mut clist, &mut nlist);
+            self.advance(pos, ch, &mut clist, &mut nlist);
+            
             // rebind clist and nlist
             swap(&mut clist, &mut nlist);
             nlist.clear();
@@ -254,7 +254,8 @@ impl ThompsonInterpreter {
                 }
                 Some(mtch) => {
                     // emit a token
-                    println!("TOKEN: {} -> {} [{}]", pos, pos + mtch.len, mtch.rule);
+                    //println!("TOKEN: {} -> {} [{}]", pos, pos + mtch.len, mtch.rule);
+                    self.actions[mtch.rule](&text[pos..(pos + mtch.len)]);
                     // increment pos by mtch length and continue
                     pos += mtch.len;
                 }
