@@ -110,11 +110,11 @@ impl ThompsonInterpreter {
         clist: &mut TaskList, 
         nlist: &mut TaskList
     ) {
-        println!("step: '{}'", ch);
+        //println!("step: '{}'", ch);
         let mut i: usize = 0;
         loop {
             if i >= clist.len() {
-                println!("finished with clist, end of match step");
+                //println!("finished with clist, end of match step");
                 return; // really we want to break out of the outer loop here...
             }
 
@@ -168,45 +168,6 @@ impl ThompsonInterpreter {
     }
 
 
-/*
-    /**
-     * Return Some((ch, next_pos)) if there is a character at pos in text,
-     * None otherwise.
-     */
-    fn char_at(text: &str, pos: usize) -> Option<(char, usize)> {
-        static HI_BIT: u8 = 0b1000_0000;
-        if pos >= text.len() {
-            return None; 
-        }
-        let leader: u8 = text.as_bytes()[pos];
-        let mut length = 1;
-        if leader & HI_BIT == 0 {
-            return Some((leader as char, pos + length));
-        }
-        let mut bits: u32;
-        if leader >= 0b1111_0000 {
-            bits = (leader & 0b0000_0111) as u32;
-            length = 4;
-        } else if leader >= 0b1110_0000 {
-            bits = (leader & 0b0000_1111) as u32;
-            length = 3;
-        } else if leader >= 0b1100_0000 {
-            bits = (leader & 0b0001_1111) as u32;
-            length = 2;
-        } else {
-            unreachable!();
-        }
-        
-        for i in 1..length {
-            let byte: u8 = text.as_bytes()[pos + i];
-            bits = (bits << 6) | (byte & 0b0011_1111) as u32;
-        }
-        match ::std::char::from_u32(bits) {
-            None => None,
-            Some(ch) => Some((ch, pos + length))
-        }
-    }
-*/
 
     /**
      * Find a token starting at &text[begin..], if possible.
@@ -214,8 +175,6 @@ impl ThompsonInterpreter {
      * by an empty match list.
      */
     fn all_matches_at(&mut self, text: &str) {
-
-        println!("text: '{}'", text);
 
         let plen = self.prog.len();
         let mut clist = TaskList::new(plen);
@@ -227,25 +186,30 @@ impl ThompsonInterpreter {
             //println!(">> Adding entry point {} to clist", *start);
             clist.add_task(*start);
         }
-        let mut pos;
+        let mut pos = 0;
         let mut nxt = 0;
         let mut ch: char;
         while !clist.is_empty() {
 
-            pos = nxt;
+            pos += nxt;
 
             match char_at(&text[pos..] /*text, pos*/) {
                 None => { 
                     println!("char_at returned None");
-                    // BUG: There might not be a valid next character, 
-                    // if we are just waiting on execution of a Match 
-                    // instruction...
-                    return;
-                    // I think this has to be an error:
-                    panic!("ERROR: Could not decode character at {}", pos);
+                    // BUG: This can mean one of two things: UTF-8 decoding
+                    // failed, or we are out of string. In the latter case 
+                    // (pos == text.len()?), we might still have some work
+                    // to do (i.e., executing any last Match instructions).
+                    // But in the former case, it's a real error, and we
+                    // may not be able to continue...
+                    if pos == text.len() {
+                        ch = 0 as char;
+                    } else {
+                        panic!("ERROR: Could not decode character at {}", pos);
+                    }
                 }
-                Some((c, p)) => {
-                    nxt = p;
+                Some((c, byte_len)) => {
+                    nxt = byte_len;
                     ch = c;
                     //println!("pos: {}; nxt: {}; ch: '{}'", pos, nxt, ch);
                 }
