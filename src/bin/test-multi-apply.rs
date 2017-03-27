@@ -129,6 +129,7 @@ fn test(regex_src: &RegexSource, text_src: &TextSource) {
     use rs_regex::reparse::parse;
     use rs_regex::retrans::RegexTranslator;
     use rs_regex::reinterp::ThompsonInterpreter;
+    use rs_regex::reinterp::TokenizerAction;
 
     let mut rule_nbr: usize = 0;
     let mut translator = RegexTranslator::new();
@@ -143,7 +144,8 @@ fn test(regex_src: &RegexSource, text_src: &TextSource) {
     translator.print_prog();
 
 
-    let mut interpreter = ThompsonInterpreter::new(translator.prog);
+    let actions : Vec<TokenizerAction> = vec![];
+    let mut interpreter = ThompsonInterpreter::new(translator.prog, actions);
     let text = &text_src.get_text();
     println!("{}", text);
     interpreter.apply(&text);
